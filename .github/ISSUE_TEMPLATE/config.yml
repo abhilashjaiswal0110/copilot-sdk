@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation
+    url: https://github.com/abhilashjaiswal0110/copilot-sdk/tree/main/docs
+    about: Read the documentation before opening an issue
+  - name: Discussions
+    url: https://github.com/abhilashjaiswal0110/copilot-sdk/discussions
+    about: Use Discussions for questions, ideas, and general feedback
