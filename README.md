@@ -108,9 +108,26 @@ Please use the [GitHub Issues](https://github.com/github/copilot-sdk/issues) pag
 ## Quick Links
 
 - **[Getting Started](./docs/getting-started.md)** – Tutorial to get up and running
+- **[Local Development Setup](./docs/local-development.md)** – Clone, install, and run locally
+- **[Testing Guide](./docs/testing.md)** – Run and write tests for all SDK languages
 - **[Authentication](./docs/auth/index.md)** – GitHub OAuth, BYOK, and more
+- **[Use Cases & Prompts](./docs/use-cases/README.md)** – Real-world patterns with prompt templates
+- **[Agent Skills](./agents/README.md)** – Production-ready agent skills for common enterprise use cases
 - **[Cookbook](https://github.com/github/awesome-copilot/blob/main/cookbook/copilot-sdk)** – Practical recipes for common tasks across all languages
 - **[More Resources](https://github.com/github/awesome-copilot/blob/main/collections/copilot-sdk.md)** – Additional examples, tutorials, and community resources
+
+## Agent Skills
+
+Production-ready agent templates you can embed directly in your application:
+
+| Agent | Description |
+|-------|-------------|
+| **[Code Review Agent](./agents/code-review-agent/)** | Automated PR review with security and quality analysis |
+| **[Customer Support Agent](./agents/customer-support-agent/)** | Context-aware support with knowledge base integration |
+| **[DevOps Agent](./agents/devops-agent/)** | Infrastructure health checks and incident response |
+| **[Data Analyst Agent](./agents/data-analyst-agent/)** | Conversational data analysis and report generation |
+
+See the **[Agent Skills README](./agents/README.md)** for setup instructions and usage examples.
 
 ## Unofficial, Community-maintained SDKs
 
