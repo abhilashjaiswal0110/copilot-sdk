@@ -118,10 +118,13 @@ Focus on: production environment
 
 ```typescript
 import { CopilotClient, defineTool } from "@github/copilot-sdk";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/** Kubernetes name pattern: lowercase alphanumeric and hyphens only */
+const K8S_NAME_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
 
 // Tool: run a read-only kubectl command
 const runKubectl = defineTool("run_kubectl", {
@@ -137,14 +140,14 @@ const runKubectl = defineTool("run_kubectl", {
         required: ["command"],
     },
     handler: async ({ command }) => {
-        // Only allow read-only commands for safety
-        const allowed = ["get", "describe", "logs", "top", "rollout status"];
-        const isReadOnly = allowed.some((cmd) => command.trimStart().startsWith(cmd));
+        const args = command.trim().split(/\s+/).filter(Boolean);
+        const allowed = ["get", "describe", "logs", "top", "rollout"];
+        const isReadOnly = args.length > 0 && allowed.includes(args[0] ?? "");
         if (!isReadOnly) {
             return { error: "Only read-only kubectl commands are permitted" };
         }
         try {
-            const { stdout, stderr } = await execAsync(`kubectl ${command}`);
+            const { stdout, stderr } = await execFileAsync("kubectl", args);
             return { output: stdout, stderr };
         } catch (err: unknown) {
             return { error: String(err) };
@@ -163,10 +166,21 @@ const fetchLogs = defineTool("fetch_logs", {
         },
         required: ["service"],
     },
-    handler: async ({ service, namespace, lines }) => {
-        const { stdout } = await execAsync(
-            `kubectl logs -l app=${service} -n ${namespace} --tail=${lines} --since=1h`
-        );
+    handler: async ({ service, namespace = "production", lines = 100 }) => {
+        // Validate service and namespace to prevent argument injection
+        if (!K8S_NAME_PATTERN.test(service)) {
+            return { error: "Invalid service name format." };
+        }
+        if (!K8S_NAME_PATTERN.test(namespace)) {
+            return { error: "Invalid namespace format." };
+        }
+        const safeLines = Math.max(1, Math.min(1000, Math.floor(Number(lines))));
+        const { stdout } = await execFileAsync("kubectl", [
+            "logs", "-l", `app=${service}`,
+            "-n", namespace,
+            `--tail=${safeLines}`,
+            "--since=1h",
+        ]);
         return { logs: stdout };
     },
 });

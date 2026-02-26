@@ -21,9 +21,8 @@ Each agent follows a consistent structure:
 agents/<agent-name>/
   README.md         # Agent overview, setup, and prompt reference
   agent.md          # Copilot agent skill definition (system prompt + tool catalog)
-  examples/         # Usage examples in multiple languages
+  examples/         # Usage examples (available languages vary by agent; see agent README)
     nodejs.ts
-    python.py
 ```
 
 ---
@@ -58,7 +57,7 @@ Each agent includes ready-to-run examples:
 cd agents/code-review-agent
 npx tsx examples/nodejs.ts
 
-# Python
+# Python (code-review agent only)
 cd agents/code-review-agent
 uv run python examples/python.py
 ```

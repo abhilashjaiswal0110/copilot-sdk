@@ -57,6 +57,8 @@ async def fetch_diff(params: FetchDiffParams) -> dict:
 @define_tool(description="Post an inline review comment on a specific line of a PR")
 async def post_review_comment(params: PostCommentParams) -> dict:
     token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN", "")
+    if not token:
+        return {"error": "GITHUB_TOKEN or GH_TOKEN environment variable is required to post review comments"}
     headers = {
         "Accept": "application/vnd.github.v3+json",
         "Authorization": f"Bearer {token}",

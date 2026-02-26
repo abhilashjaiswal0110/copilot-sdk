@@ -141,20 +141,47 @@ const runSqlQuery = defineTool("run_sql_query", {
 });
 
 const loadCsv = defineTool("load_csv", {
-    description: "Load a CSV file and return its contents as structured data",
+    description: "Load a CSV file from the data directory and return its contents as structured data",
     parameters: {
         type: "object",
         properties: {
-            file_path: { type: "string", description: "Path to the CSV file" },
+            file_path: {
+                type: "string",
+                description: "Relative path to the CSV file within the application's data directory",
+            },
             rows: { type: "number", description: "Number of rows to return", default: 50 },
         },
         required: ["file_path"],
     },
     handler: async ({ file_path, rows = 50 }) => {
         const { readFileSync } = await import("fs");
-        const content = readFileSync(file_path, "utf-8");
-        const lines = content.split("\n").slice(0, rows + 1);
-        return { preview: lines.join("\n"), total_rows: content.split("\n").length - 1 };
+        const path = await import("path");
+
+        // Reject absolute paths and path traversal attempts
+        if (path.isAbsolute(file_path) || file_path.includes("..")) {
+            return { error: "Invalid file path. Only relative paths within the data directory are allowed." };
+        }
+        if (!file_path.toLowerCase().endsWith(".csv")) {
+            return { error: "Invalid file type. Only .csv files can be loaded." };
+        }
+
+        const dataDir = process.env.DATA_DIR ?? process.cwd();
+        const resolvedDataDir = path.resolve(dataDir);
+        const resolvedPath = path.resolve(resolvedDataDir, file_path);
+
+        // Ensure resolved path stays inside the data directory
+        if (!resolvedPath.startsWith(resolvedDataDir + path.sep) && resolvedPath !== resolvedDataDir) {
+            return { error: "Access outside of the data directory is not allowed." };
+        }
+
+        const content = readFileSync(resolvedPath, "utf-8");
+        const lines = content.split("\n").filter(Boolean);
+        const headers = lines[0]?.split(",") ?? [];
+        const preview = lines.slice(1, rows + 1).map((line) => {
+            const values = line.split(",");
+            return Object.fromEntries(headers.map((h, i) => [h.trim(), values[i]?.trim()]));
+        });
+        return { columns: headers, preview, total_rows: lines.length - 1 };
     },
 });
 
@@ -190,6 +217,7 @@ process.exit(0);
 ```python
 import asyncio
 import csv
+import os
 import sys
 from pathlib import Path
 from copilot import CopilotClient
@@ -216,21 +244,35 @@ async def run_sql_query(params: SqlQueryParams) -> dict:
         "row_count": 2,
     }
 
-@define_tool(description="Load a CSV file and preview its contents")
+@define_tool(description="Load a CSV file from the data directory and preview its contents")
 async def load_csv(params: LoadCsvParams) -> dict:
-    path = Path(params.file_path)
-    if not path.exists():
+    # Reject absolute paths and path traversal attempts
+    if os.path.isabs(params.file_path) or ".." in params.file_path.split(os.sep):
+        return {"error": "Invalid file path. Only relative paths within the data directory are allowed."}
+    if not params.file_path.lower().endswith(".csv"):
+        return {"error": "Invalid file type. Only .csv files are supported."}
+
+    data_dir = Path(os.environ.get("DATA_DIR", ".")).resolve()
+    resolved = (data_dir / params.file_path).resolve()
+
+    # Ensure the resolved path stays inside the data directory
+    if not str(resolved).startswith(str(data_dir) + os.sep):
+        return {"error": "Access outside of the data directory is not allowed."}
+    if not resolved.exists():
         return {"error": f"File not found: {params.file_path}"}
-    
+
     rows = []
-    with path.open() as f:
+    with resolved.open() as f:
         reader = csv.DictReader(f)
         for i, row in enumerate(reader):
             if i >= params.rows:
                 break
             rows.append(row)
-    
-    return {"preview": rows, "total_rows": sum(1 for _ in open(params.file_path)) - 1}
+
+    with resolved.open() as f:
+        total_rows = sum(1 for _ in f) - 1
+
+    return {"preview": rows, "total_rows": total_rows}
 
 async def main():
     client = CopilotClient()

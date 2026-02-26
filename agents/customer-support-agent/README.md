@@ -7,9 +7,6 @@ A context-aware customer support assistant that uses your knowledge base, CRM, a
 ```bash
 # Node.js
 npx tsx examples/nodejs.ts
-
-# Python
-uv run python examples/python.py
 ```
 
 ## What This Agent Does

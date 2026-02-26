@@ -16,12 +16,15 @@ const fetchDiff = defineTool("fetch_diff", {
     },
     handler: async ({ owner, repo, pr_number }) => {
         const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? "";
+        if (!token) {
+            return { error: "GITHUB_TOKEN or GH_TOKEN environment variable is required" };
+        }
         const response = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/pulls/${pr_number}`,
             {
                 headers: {
                     Accept: "application/vnd.github.v3.diff",
-                    Authorization: token ? `Bearer ${token}` : "",
+                    Authorization: `Bearer ${token}`,
                 },
             }
         );
@@ -52,6 +55,9 @@ const postReviewComment = defineTool("post_review_comment", {
     },
     handler: async ({ owner, repo, pr_number, commit_id, path, line, body }) => {
         const token = process.env.GITHUB_TOKEN ?? process.env.GH_TOKEN ?? "";
+        if (!token) {
+            return { error: "GITHUB_TOKEN or GH_TOKEN environment variable is required to post review comments" };
+        }
         const response = await fetch(
             `https://api.github.com/repos/${owner}/${repo}/pulls/${pr_number}/comments`,
             {

@@ -1,14 +1,19 @@
 import { CopilotClient, defineTool } from "@github/copilot-sdk";
-import { exec } from "child_process";
+import { execFile } from "child_process";
 import { promisify } from "util";
 import * as readline from "readline";
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
+
+/** Kubernetes name pattern: lowercase alphanumeric and hyphens only */
+const K8S_NAME_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/;
+/** Duration pattern for --since flag: e.g. 1h, 30m, 2h30m */
+const DURATION_PATTERN = /^[0-9]+(h|m|s)$/;
 
 // ---------------------------------------------------------------------------
 // Tool: run read-only kubectl commands
 // ---------------------------------------------------------------------------
-const ALLOWED_KUBECTL_PREFIXES = ["get", "describe", "logs", "top", "rollout"];
+const ALLOWED_KUBECTL_SUBCOMMANDS = ["get", "describe", "logs", "top", "rollout"];
 
 const runKubectl = defineTool("run_kubectl", {
     description: "Execute a read-only kubectl command to inspect cluster state",
@@ -23,13 +28,17 @@ const runKubectl = defineTool("run_kubectl", {
         required: ["command"],
     },
     handler: async ({ command }) => {
-        const trimmed = command.trim();
-        const isAllowed = ALLOWED_KUBECTL_PREFIXES.some((prefix) => trimmed.startsWith(prefix));
+        const args = command.trim().split(/\s+/).filter(Boolean);
+        if (args.length === 0) {
+            return { error: "No command provided" };
+        }
+        const subcommand = args[0] ?? "";
+        const isAllowed = ALLOWED_KUBECTL_SUBCOMMANDS.some((prefix) => subcommand === prefix);
         if (!isAllowed) {
-            return { error: `Only read-only kubectl commands are permitted. Allowed: ${ALLOWED_KUBECTL_PREFIXES.join(", ")}` };
+            return { error: `Only read-only kubectl commands are permitted. Allowed: ${ALLOWED_KUBECTL_SUBCOMMANDS.join(", ")}` };
         }
         try {
-            const { stdout, stderr } = await execAsync(`kubectl ${trimmed}`);
+            const { stdout, stderr } = await execFileAsync("kubectl", args);
             return { output: stdout, stderr };
         } catch (err: unknown) {
             return { error: String(err) };
@@ -53,10 +62,23 @@ const fetchLogs = defineTool("fetch_logs", {
         required: ["service"],
     },
     handler: async ({ service, namespace = "production", lines = 100, since = "1h" }) => {
+        if (!K8S_NAME_PATTERN.test(service)) {
+            return { error: "Invalid service name. Use lowercase alphanumeric characters and hyphens only." };
+        }
+        if (!K8S_NAME_PATTERN.test(namespace)) {
+            return { error: "Invalid namespace. Use lowercase alphanumeric characters and hyphens only." };
+        }
+        if (!DURATION_PATTERN.test(since)) {
+            return { error: "Invalid duration format. Use a value like 1h, 30m, or 2h." };
+        }
+        const safeLines = Math.max(1, Math.min(1000, Math.floor(Number(lines))));
         try {
-            const { stdout } = await execAsync(
-                `kubectl logs -l app=${service} -n ${namespace} --tail=${lines} --since=${since}`
-            );
+            const { stdout } = await execFileAsync("kubectl", [
+                "logs", "-l", `app=${service}`,
+                "-n", namespace,
+                `--tail=${safeLines}`,
+                `--since=${since}`,
+            ]);
             return { logs: stdout };
         } catch (err: unknown) {
             return { error: String(err) };
@@ -77,10 +99,13 @@ const listRecentDeployments = defineTool("list_recent_deployments", {
         required: [],
     },
     handler: async ({ namespace = "production" }) => {
+        if (!K8S_NAME_PATTERN.test(namespace)) {
+            return { error: "Invalid namespace. Use lowercase alphanumeric characters and hyphens only." };
+        }
         try {
-            const { stdout } = await execAsync(
-                `kubectl get deployments -n ${namespace} -o json`
-            );
+            const { stdout } = await execFileAsync("kubectl", [
+                "get", "deployments", "-n", namespace, "-o", "json",
+            ]);
             const data = JSON.parse(stdout) as { items: Array<{
                 metadata: { name: string; creationTimestamp: string };
                 spec: { template: { spec: { containers: Array<{ image: string }> } } };

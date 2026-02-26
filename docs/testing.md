@@ -189,6 +189,7 @@ package copilot_test
 
 import (
     "context"
+    "os"
     "testing"
 
     copilot "github.com/github/copilot-sdk/go"

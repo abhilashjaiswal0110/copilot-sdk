@@ -40,21 +40,42 @@ const runSqlQuery = defineTool("run_sql_query", {
 });
 
 // ---------------------------------------------------------------------------
-// Tool: load a CSV file
+// Tool: load a CSV file (with path traversal protection)
 // ---------------------------------------------------------------------------
 const loadCsv = defineTool("load_csv", {
-    description: "Load a CSV file and return its contents for analysis",
+    description: "Load a CSV file from the data directory and return its contents for analysis",
     parameters: {
         type: "object",
         properties: {
-            file_path: { type: "string", description: "Path to the CSV file" },
+            file_path: {
+                type: "string",
+                description: "Relative path to the CSV file within the application's data directory",
+            },
             rows: { type: "number", description: "Number of rows to return", default: 50 },
         },
         required: ["file_path"],
     },
     handler: async ({ file_path, rows = 50 }) => {
+        const path = await import("path");
+
+        // Reject absolute paths and path traversal attempts
+        if (path.isAbsolute(file_path) || file_path.includes("..")) {
+            return { error: "Invalid file path. Only relative paths within the data directory are allowed." };
+        }
+        if (!file_path.toLowerCase().endsWith(".csv")) {
+            return { error: "Only .csv files are supported." };
+        }
+
+        const dataDir = process.env.DATA_DIR ?? process.cwd();
+        const resolvedDataDir = path.resolve(dataDir);
+        const resolvedPath = path.resolve(resolvedDataDir, file_path);
+
+        if (!resolvedPath.startsWith(resolvedDataDir + path.sep) && resolvedPath !== resolvedDataDir) {
+            return { error: "Access outside of the data directory is not allowed." };
+        }
+
         try {
-            const content = readFileSync(file_path, "utf-8");
+            const content = readFileSync(resolvedPath, "utf-8");
             const lines = content.split("\n").filter(Boolean);
             const headers = lines[0]?.split(",") ?? [];
             const data = lines.slice(1, rows + 1).map((line) => {
