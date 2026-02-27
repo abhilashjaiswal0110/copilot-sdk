@@ -17,6 +17,7 @@ import re
 import tempfile
 import time
 import textwrap
+import uuid
 
 import pytest
 
@@ -107,7 +108,7 @@ def _validate_duration(value: str) -> bool:
 
 
 def _make_ticket_id() -> str:
-    return f"TKT-{int(time.time())}"
+    return f"TKT-{uuid.uuid4()}"
 
 
 # ---------------------------------------------------------------------------
@@ -315,13 +316,13 @@ class TestTicketGeneration:
     def test_ticket_id_format(self):
         ticket_id = _make_ticket_id()
         assert ticket_id.startswith("TKT-")
-        timestamp_part = ticket_id[4:]
-        assert timestamp_part.isdigit()
+        uuid_part = ticket_id[4:]
+        # Must be a valid UUID (8-4-4-4-12 hex groups)
+        uuid.UUID(uuid_part)  # raises ValueError if invalid
 
     def test_ticket_ids_are_unique(self):
-        ids = {_make_ticket_id() for _ in range(5)}
-        # All should be non-empty strings
-        assert all(ids)
+        ids = [_make_ticket_id() for _ in range(100)]
+        assert len(set(ids)) == 100, "UUID-based ticket IDs must be unique"
 
     def test_priority_affects_estimated_response(self):
         def estimated_response(priority: str) -> str:

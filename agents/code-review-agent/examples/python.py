@@ -17,6 +17,31 @@ from copilot.tools import define_tool
 
 
 # ---------------------------------------------------------------------------
+# GitHub API helpers
+# ---------------------------------------------------------------------------
+
+_MAX_RETRIES = 3
+
+
+async def _github_request_with_retry(
+    http: httpx.AsyncClient,
+    method: str,
+    url: str,
+    **kwargs,
+) -> httpx.Response:
+    """Execute a GitHub API request, retrying up to _MAX_RETRIES times on 429 rate-limit."""
+    for attempt in range(_MAX_RETRIES):
+        response = await http.request(method, url, **kwargs)
+        if response.status_code != 429:
+            return response
+        retry_after = int(response.headers.get("retry-after", "60"))
+        wait = min(retry_after, 60)
+        if attempt < _MAX_RETRIES - 1:
+            await asyncio.sleep(wait)
+    return response  # return last response after exhausting retries
+
+
+# ---------------------------------------------------------------------------
 # Tool definitions
 # ---------------------------------------------------------------------------
 
@@ -44,11 +69,15 @@ async def fetch_diff(params: FetchDiffParams) -> dict:
         headers["Authorization"] = f"Bearer {token}"
 
     async with httpx.AsyncClient() as http:
-        response = await http.get(
+        response = await _github_request_with_retry(
+            http,
+            "GET",
             f"https://api.github.com/repos/{params.owner}/{params.repo}/pulls/{params.pr_number}",
             headers=headers,
         )
 
+    if response.status_code == 429:
+        return {"error": "GitHub API rate limit exceeded. Please retry later."}
     if response.status_code != 200:
         return {"error": f"GitHub API error: {response.status_code}"}
     return {"diff": response.text}
@@ -72,11 +101,15 @@ async def post_review_comment(params: PostCommentParams) -> dict:
         "side": "RIGHT",
     }
     async with httpx.AsyncClient() as http:
-        response = await http.post(
+        response = await _github_request_with_retry(
+            http,
+            "POST",
             f"https://api.github.com/repos/{params.owner}/{params.repo}/pulls/{params.pr_number}/comments",
             headers=headers,
             json=payload,
         )
+    if response.status_code == 429:
+        return {"error": "GitHub API rate limit exceeded. Please retry later."}
     if response.status_code not in (200, 201):
         return {"error": f"GitHub API error: {response.status_code}"}
     data = response.json()
