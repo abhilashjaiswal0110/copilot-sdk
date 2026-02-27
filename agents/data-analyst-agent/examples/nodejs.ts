@@ -16,10 +16,13 @@ const runSqlQuery = defineTool("run_sql_query", {
         required: ["sql"],
     },
     handler: async ({ sql, limit = 100 }) => {
-        // Validate read-only
+        // Validate read-only: only SELECT/WITH allowed; block semicolons to prevent stacked queries
         const normalized = sql.trim().toUpperCase();
         if (!normalized.startsWith("SELECT") && !normalized.startsWith("WITH")) {
             return { error: "Only SELECT queries are permitted" };
+        }
+        if (sql.includes(";")) {
+            return { error: "Semicolons are not permitted in queries" };
         }
         // Replace with your actual database client (pg, mysql2, better-sqlite3, etc.)
         const dbUrl = process.env.DATABASE_URL;

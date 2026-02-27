@@ -7,6 +7,9 @@ A conversational data analysis assistant that executes SQL queries, analyzes dat
 ```bash
 # Node.js
 npx tsx examples/nodejs.ts
+
+# Python
+uv run python examples/python.py
 ```
 
 ## What This Agent Does
