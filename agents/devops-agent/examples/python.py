@@ -45,7 +45,7 @@ class KubectlParams(BaseModel):
 
 
 @define_tool(description="Execute a read-only kubectl command to inspect cluster state")
-def run_kubectl(params: KubectlParams) -> dict:
+async def run_kubectl(params: KubectlParams) -> dict:
     args = params.command.strip().split()
     if not args:
         return {"error": "No command provided"}
@@ -58,7 +58,8 @@ def run_kubectl(params: KubectlParams) -> dict:
             )
         }
     try:
-        result = subprocess.run(
+        result = await asyncio.to_thread(
+            subprocess.run,
             ["kubectl", *args],
             capture_output=True,
             text=True,
@@ -84,7 +85,7 @@ class FetchLogsParams(BaseModel):
 
 
 @define_tool(description="Fetch recent logs for a service")
-def fetch_logs(params: FetchLogsParams) -> dict:
+async def fetch_logs(params: FetchLogsParams) -> dict:
     err = _validate_k8s_name(params.service, "service name")
     if err:
         return {"error": err}
@@ -95,7 +96,8 @@ def fetch_logs(params: FetchLogsParams) -> dict:
         return {"error": "Invalid duration format. Use a value like 1h, 30m, or 2h."}
     safe_lines = max(1, min(1000, params.lines))
     try:
-        result = subprocess.run(
+        result = await asyncio.to_thread(
+            subprocess.run,
             [
                 "kubectl", "logs", "-l", f"app={params.service}",
                 "-n", params.namespace,
@@ -123,14 +125,15 @@ class ListDeploymentsParams(BaseModel):
 
 
 @define_tool(description="List recent deployment events in a namespace")
-def list_recent_deployments(params: ListDeploymentsParams) -> dict:
+async def list_recent_deployments(params: ListDeploymentsParams) -> dict:
     import json
 
     err = _validate_k8s_name(params.namespace, "namespace")
     if err:
         return {"error": err}
     try:
-        result = subprocess.run(
+        result = await asyncio.to_thread(
+            subprocess.run,
             ["kubectl", "get", "deployments", "-n", params.namespace, "-o", "json"],
             capture_output=True,
             text=True,

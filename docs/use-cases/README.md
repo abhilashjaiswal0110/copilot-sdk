@@ -10,6 +10,7 @@ Real-world patterns and prompt templates for building production applications wi
 | [Customer Support Bot](./customer-support-agent.md) | Context-aware support assistant with knowledge base | Session persistence, custom tools |
 | [DevOps Automation Agent](./devops-automation-agent.md) | Infrastructure queries, incident response, and runbooks | MCP integration, structured output |
 | [Data Analysis Agent](./data-analyst-agent.md) | Analyze datasets, generate reports, and answer data questions | Custom tools, long sessions |
+| [Integration Patterns](./integrations.md) | PR Review Bot, Zendesk, Slack BI, PagerDuty, CI Security Gate | Webhooks, CI/CD, event-driven |
 
 ---
 

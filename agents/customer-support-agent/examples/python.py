@@ -6,7 +6,7 @@ Usage:
 """
 import asyncio
 import sys
-import time
+import uuid
 from typing import Optional
 
 from pydantic import BaseModel, Field
@@ -84,7 +84,7 @@ async def lookup_account(params: LookupAccountParams) -> dict:
 
 @define_tool(description="Create a support ticket for issues requiring follow-up")
 async def create_ticket(params: CreateTicketParams) -> dict:
-    ticket_id = f"TKT-{int(time.time())}"
+    ticket_id = f"TKT-{uuid.uuid4()}"
     print(
         f"\n[Ticket Created] {ticket_id}: {params.title} ({params.priority}) "
         f"for {params.customer_email}",
