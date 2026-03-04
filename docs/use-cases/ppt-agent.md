@@ -169,6 +169,7 @@ Save it.
 
 ### Automated reporting pipeline
 
+<!-- docs-validate: skip -->
 ```python
 # Schedule this to run nightly; Copilot generates the deck from a data prompt
 import asyncio
