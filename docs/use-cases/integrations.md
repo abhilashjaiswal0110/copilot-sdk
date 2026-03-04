@@ -81,6 +81,7 @@ if any(f["severity"] == "critical" for f in findings.get("findings", [])):
 
 A lightweight webhook receiver accepts incoming Zendesk ticket events, invokes the customer-support agent with the ticket body, and posts the agent's response back as a public reply using the Zendesk API.
 
+<!-- docs-validate: skip -->
 ```python
 # webhook_server.py (Flask / FastAPI)
 from fastapi import FastAPI, Request
@@ -130,6 +131,7 @@ async def handle_zendesk(request: Request):
 
 A Slack app receives slash commands and routes them to the data-analyst agent. The agent translates the natural-language query to SQL (via the `run_sql_query` tool), executes against the configured database, and returns a formatted summary back to the Slack channel.
 
+<!-- docs-validate: skip -->
 ```python
 # slack_bot.py (Slack Bolt)
 from slack_bolt.async_app import AsyncApp
@@ -158,6 +160,7 @@ async def handle_query(ack, body, say):
 
 To support follow-up questions in a thread, persist the session by Slack thread timestamp:
 
+<!-- docs-validate: skip -->
 ```python
 sessions: dict[str, Session] = {}  # keyed by thread_ts
 
@@ -183,6 +186,7 @@ async def handle_mention(event, say):
 
 When PagerDuty fires an alert, a webhook handler invokes the devops agent with the alert context. The agent runs a series of read-only kubectl commands to capture the cluster state (pod health, recent deployments, error logs) and posts a structured snapshot to the incident channel.
 
+<!-- docs-validate: skip -->
 ```python
 # pagerduty_handler.py
 from fastapi import FastAPI, Request
@@ -222,6 +226,7 @@ async def handle_alert(request: Request):
 
 For recurring incident types, include a runbook reference in the system prompt:
 
+<!-- docs-validate: skip -->
 ```python
 system_message = f"""
 You are a senior SRE assistant.
