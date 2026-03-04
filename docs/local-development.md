@@ -261,11 +261,13 @@ Then configure your SDK to connect to it (avoids restarting the CLI on every run
 const client = new CopilotClient({ cliUrl: "localhost:4321" });
 ```
 
+<!-- docs-validate: skip -->
 ```python
 # Python
 client = CopilotClient({"cli_url": "localhost:4321"})
 ```
 
+<!-- docs-validate: skip -->
 ```go
 // Go
 client := copilot.NewClient(&copilot.ClientOptions{CLIUrl: "localhost:4321"})

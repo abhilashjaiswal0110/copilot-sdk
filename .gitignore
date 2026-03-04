@@ -5,3 +5,8 @@ docs/.validation/
 __pycache__/
 *.pyc
 *.pyo
+
+# Generated presentation files and output directories
+output/
+agents/ppt-agent/examples/output/
+*.pptx

@@ -248,6 +248,7 @@ dotnet/
 
 ### Writing a New Test
 
+<!-- docs-validate: skip -->
 ```csharp
 using GitHub.Copilot.SDK;
 using Xunit;
