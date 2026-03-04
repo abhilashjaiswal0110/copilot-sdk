@@ -6,7 +6,7 @@ A conversational PowerPoint authoring assistant that creates new presentations a
 
 The PPT Agent wraps `python-pptx` (Python) and `pptxgenjs` (Node.js) behind a set of well-defined tools that Copilot orchestrates from natural language. Users describe what they want in plain English; the agent sequences tool calls to produce the correct `.pptx` output.
 
-| | Python (`python-pptx`) | Node.js (`pptxgenjs`) |
+| Capability | Python (`python-pptx`) | Node.js (`pptxgenjs`) |
 |---|---|---|
 | Create new presentations | Yes | Yes |
 | Open & update existing `.pptx` | **Yes** | No (library limitation) |
@@ -91,7 +91,7 @@ Python: saves a copy to a new path (save-as). Node.js: writes the in-memory `ppt
 ## Security Design
 
 ### Path traversal protection
-All file path parameters are resolved using `os.path.realpath` (Python) / `path.resolve` (Node.js) and checked to ensure they remain inside the configured `PPTX_OUTPUT_DIR` or `PPTX_ASSETS_DIR`. Paths containing `..` are rejected immediately.
+All file path parameters are resolved using `os.path.realpath` (Python) / `fs.realpathSync` (Node.js) and checked to ensure they remain inside the configured `PPTX_OUTPUT_DIR` or `PPTX_ASSETS_DIR`. Absolute paths and paths containing `..` are rejected immediately. Symlink targets are resolved before the directory check, preventing symlink-based escape attacks.
 
 ### Extension enforcement
 Only `.pptx` files are accepted for presentation parameters. Only known image extensions (`.png`, `.jpg`, `.jpeg`, `.gif`, `.bmp`, `.tiff`) are accepted for image parameters.
@@ -179,11 +179,11 @@ from copilot.tools import define_tool
 async def nightly_report(data_summary: str) -> str:
     client = CopilotClient()
     await client.start()
-    session = await client.create_session({ "tools": _ALL_TOOLS, ... })
-    result = await session.send_and_wait({
-        "prompt": f"Create a nightly ops report from this data:\n{data_summary}\n"
-                  f"Save to reports/ops_{today}.pptx"
-    })
+    session = await client.create_session({"tools": _ALL_TOOLS})
+    result = await session.send_and_wait(
+        f"Create a nightly ops report from this data:\n{data_summary}\n"
+        f"Save to reports/ops_{today}.pptx"
+    )
     await client.stop()
     return result.data.content
 ```

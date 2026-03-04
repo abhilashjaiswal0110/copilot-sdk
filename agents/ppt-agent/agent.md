@@ -49,8 +49,10 @@ Output format:
 Create a new PowerPoint presentation file, optionally based on an existing template.
 
 **Parameters:**
-- `output_path` (string, required) — Destination `.pptx` file path (relative to `PPTX_OUTPUT_DIR` or absolute)
+- `output_path` (string, required) — Destination `.pptx` file path, relative to `PPTX_OUTPUT_DIR` (absolute paths are rejected)
 - `template_path` (string, optional) — Path to an existing `.pptx` file to use as the slide master / theme source
+
+> **Implementation note:** The Python and Node.js implementations share this tool signature. The Python implementation additionally supports `template_path` for opening an existing file as a theme source; the Node.js implementation starts from a blank presentation when no template is provided.
 
 **Returns:**
 ```json

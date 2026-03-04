@@ -49,13 +49,18 @@ function resolveOutputPath(filePath: string): { resolved: string } | { error: st
   if (!filePath.toLowerCase().endsWith(".pptx")) {
     return { error: "Only .pptx files are supported." };
   }
+  if (path.isAbsolute(filePath)) {
+    return { error: "Absolute paths are not allowed. Provide a path relative to PPTX_OUTPUT_DIR." };
+  }
 
   const outputDir = process.env.PPTX_OUTPUT_DIR ?? process.cwd();
-  const resolved = path.isAbsolute(filePath)
-    ? path.resolve(filePath)
-    : path.resolve(outputDir, filePath);
+  let outputDirReal: string;
+  try { outputDirReal = fs.realpathSync(outputDir); } catch { outputDirReal = path.resolve(outputDir); }
 
-  const outputDirReal = path.resolve(outputDir);
+  const candidate = path.resolve(outputDir, filePath);
+  let resolved: string;
+  try { resolved = fs.realpathSync(candidate); } catch { resolved = candidate; }
+
   if (!resolved.startsWith(outputDirReal + path.sep) && resolved !== outputDirReal) {
     return { error: "Access outside of the output directory is not allowed." };
   }
@@ -77,12 +82,18 @@ function resolveAssetPath(assetPath: string): { resolved: string } | { error: st
     };
   }
 
-  const assetsDir = process.env.PPTX_ASSETS_DIR ?? process.cwd();
-  const resolved = path.isAbsolute(assetPath)
-    ? path.resolve(assetPath)
-    : path.resolve(assetsDir, assetPath);
+  if (path.isAbsolute(assetPath)) {
+    return { error: "Absolute paths are not allowed. Provide a path relative to PPTX_ASSETS_DIR." };
+  }
 
-  const assetsDirReal = path.resolve(assetsDir);
+  const assetsDir = process.env.PPTX_ASSETS_DIR ?? process.cwd();
+  let assetsDirReal: string;
+  try { assetsDirReal = fs.realpathSync(assetsDir); } catch { assetsDirReal = path.resolve(assetsDir); }
+
+  const candidate = path.resolve(assetsDir, assetPath);
+  let resolved: string;
+  try { resolved = fs.realpathSync(candidate); } catch { resolved = candidate; }
+
   if (!resolved.startsWith(assetsDirReal + path.sep)) {
     return { error: "Access outside the assets directory is not allowed." };
   }

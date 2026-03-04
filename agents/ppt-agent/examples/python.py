@@ -69,15 +69,14 @@ def _resolve_pptx_path(file_path: str) -> tuple[Optional[str], Optional[str]]:
         return None, "Path traversal is not allowed."
     if not file_path.lower().endswith(".pptx"):
         return None, "Only .pptx files are supported."
-
     if osp.isabs(file_path):
-        resolved = osp.realpath(file_path)
-    else:
-        output_dir = os.environ.get("PPTX_OUTPUT_DIR", os.getcwd())
-        output_dir_real = osp.realpath(output_dir)
-        resolved = osp.realpath(osp.join(output_dir_real, file_path))
-        if not resolved.startswith(output_dir_real + osp.sep) and resolved != output_dir_real:
-            return None, "Access outside of the output directory is not allowed."
+        return None, "Absolute paths are not allowed. Provide a path relative to PPTX_OUTPUT_DIR."
+
+    output_dir = os.environ.get("PPTX_OUTPUT_DIR", os.getcwd())
+    output_dir_real = osp.realpath(output_dir)
+    resolved = osp.realpath(osp.join(output_dir_real, file_path))
+    if not resolved.startswith(output_dir_real + osp.sep) and resolved != output_dir_real:
+        return None, "Access outside of the output directory is not allowed."
 
     return resolved, None
 
@@ -92,13 +91,13 @@ def _resolve_asset_path(asset_path: str) -> tuple[Optional[str], Optional[str]]:
         return None, f"Unsupported image format '{ext}'. Supported: {', '.join(sorted(SUPPORTED_IMAGE_EXTENSIONS))}"
 
     if osp.isabs(asset_path):
-        resolved = osp.realpath(asset_path)
-    else:
-        assets_dir = os.environ.get("PPTX_ASSETS_DIR", os.getcwd())
-        assets_dir_real = osp.realpath(assets_dir)
-        resolved = osp.realpath(osp.join(assets_dir_real, asset_path))
-        if not resolved.startswith(assets_dir_real + osp.sep):
-            return None, "Access outside the assets directory is not allowed."
+        return None, "Absolute paths are not allowed. Provide a path relative to PPTX_ASSETS_DIR."
+
+    assets_dir = os.environ.get("PPTX_ASSETS_DIR", os.getcwd())
+    assets_dir_real = osp.realpath(assets_dir)
+    resolved = osp.realpath(osp.join(assets_dir_real, asset_path))
+    if not resolved.startswith(assets_dir_real + osp.sep):
+        return None, "Access outside the assets directory is not allowed."
 
     if not osp.exists(resolved):
         return None, f"Image file not found: {asset_path}"
@@ -444,7 +443,6 @@ async def add_table_slide(params: AddTableSlideParams) -> dict:
         cols = len(params.headers)
         total_rows = len(params.rows) + 1  # +1 for header row
         table_width = Inches(9.0)
-        col_width = table_width // cols
         table = slide.shapes.add_table(
             total_rows, cols, Inches(0.5), Inches(1.5), table_width, Inches(0.4 * total_rows)
         ).table
@@ -671,8 +669,6 @@ class DeleteSlideParams(BaseModel):
 @define_tool(description="Remove a slide from a presentation by index")
 async def delete_slide(params: DeleteSlideParams) -> dict:
     from pptx import Presentation
-    from pptx.oxml.ns import qn
-    from lxml import etree  # lxml ships with python-pptx
 
     resolved, err = _resolve_pptx_path(params.file_path)
     if err:

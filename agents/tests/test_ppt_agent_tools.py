@@ -43,14 +43,13 @@ def _resolve_pptx_path(file_path: str, output_dir: str) -> tuple[str | None, str
         return None, "Path traversal is not allowed."
     if not file_path.lower().endswith(".pptx"):
         return None, "Only .pptx files are supported."
-
     if osp.isabs(file_path):
-        resolved = osp.realpath(file_path)
-    else:
-        output_dir_real = osp.realpath(output_dir)
-        resolved = osp.realpath(osp.join(output_dir_real, file_path))
-        if not resolved.startswith(output_dir_real + osp.sep) and resolved != output_dir_real:
-            return None, "Access outside of the output directory is not allowed."
+        return None, "Absolute paths are not allowed. Provide a path relative to PPTX_OUTPUT_DIR."
+
+    output_dir_real = osp.realpath(output_dir)
+    resolved = osp.realpath(osp.join(output_dir_real, file_path))
+    if not resolved.startswith(output_dir_real + osp.sep) and resolved != output_dir_real:
+        return None, "Access outside of the output directory is not allowed."
 
     return resolved, None
 
@@ -65,12 +64,12 @@ def _resolve_asset_path(asset_path: str, assets_dir: str) -> tuple[str | None, s
         return None, f"Unsupported image format '{ext}'."
 
     if osp.isabs(asset_path):
-        resolved = osp.realpath(asset_path)
-    else:
-        assets_dir_real = osp.realpath(assets_dir)
-        resolved = osp.realpath(osp.join(assets_dir_real, asset_path))
-        if not resolved.startswith(assets_dir_real + osp.sep):
-            return None, "Access outside the assets directory is not allowed."
+        return None, "Absolute paths are not allowed. Provide a path relative to PPTX_ASSETS_DIR."
+
+    assets_dir_real = osp.realpath(assets_dir)
+    resolved = osp.realpath(osp.join(assets_dir_real, asset_path))
+    if not resolved.startswith(assets_dir_real + osp.sep):
+        return None, "Access outside the assets directory is not allowed."
 
     if not osp.exists(resolved):
         return None, f"Image file not found: {asset_path}"
@@ -181,14 +180,25 @@ class TestResolvePptxPath:
         resolved, err = _resolve_pptx_path("REPORT.PPTX", str(tmp_path))
         assert err is None
 
-    def test_escape_via_symlink_target_blocked(self, tmp_path):
-        # Even if path looks benign, must stay under output_dir
+    def test_absolute_path_rejected(self, tmp_path):
         outside = tmp_path.parent / "outside.pptx"
         _, err = _resolve_pptx_path(str(outside), str(tmp_path))
-        # Absolute path is allowed as long as it doesn't contain ".."
-        # (absolute paths resolve directly — no dir restriction unless ".." present)
-        # Confirm no traversal error specifically
-        assert ".." not in str(outside)
+        assert err is not None
+        assert "Absolute paths are not allowed" in err
+
+    def test_escape_via_symlink_target_blocked(self, tmp_path):
+        # Regression: a symlink inside output_dir pointing outside must be blocked
+        if not hasattr(os, "symlink"):
+            pytest.skip("os.symlink not available on this platform")
+        outside = tmp_path.parent / "outside.pptx"
+        outside.write_bytes(b"")
+        link_name = tmp_path / "escape_link.pptx"
+        try:
+            os.symlink(outside, link_name)
+        except OSError:
+            pytest.skip("Cannot create symlink on this platform (requires elevated privileges)")
+        _, err = _resolve_pptx_path("escape_link.pptx", str(tmp_path))
+        assert err is not None, "Symlink escaping output_dir must be rejected"
 
 
 # ---------------------------------------------------------------------------
@@ -365,7 +375,7 @@ class TestImageDimensionValidation:
     def test_zero_height_rejected(self):
         err = _validate_image_dimensions(1.0, 1.0, 4.0, 0.0)
         assert err is not None
-        assert "height" is not None  # confirms the field is mentioned
+        assert "height" in err  # confirms the field is mentioned in the error message
 
     def test_negative_width_rejected(self):
         err = _validate_image_dimensions(1.0, 1.0, -2.0, 3.0)

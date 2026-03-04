@@ -72,7 +72,7 @@ PPTX_ASSETS_DIR=./assets            # Directory for image assets (default: curre
 
 ## Security
 
-- **Path traversal protection**: all file paths are validated and resolved against the configured output and assets directories.
+- **Path traversal protection**: all file paths are validated and resolved against the configured output and assets directories. Absolute paths and paths containing `..` are rejected. Symlink targets are resolved before the directory scope check.
 - **Extension enforcement**: only `.pptx` files are accepted for presentation paths.
 - **Asset scoping**: image files must reside within `PPTX_ASSETS_DIR`.
 - **Slide index bounds**: all slide index operations are validated before execution.
